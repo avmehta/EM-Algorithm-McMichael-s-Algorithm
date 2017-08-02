@@ -6,5 +6,5 @@
 function [H]=getHyt(vect,id);
 idxs = find(vect==0); %Indexes of all the missing values 
 H=id;
-H(idxs,:)=[]; %Remove all rows that NaNs were found. 
+H(idxs,:)=[]; %Remove all rows that 0s were found. 
 end
