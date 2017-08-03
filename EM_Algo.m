@@ -152,7 +152,7 @@ for ii = 1:iter
     %Note that this convergence criterion is not exactly as described in
     %equation 13, however it is similar and accomplishes the same purpose.
     RMSEs=vertcat(RMSEs,RMSE);
-    if Last_RMSE-RMSE<=.0005 %Convergence condition
+    if Last_RMSE-RMSE<=.0001 %Convergence condition
         MMSE=RMSE; %Lowest RMSE
         break; 
     end
@@ -168,7 +168,9 @@ title('RMSE vs Iteration of EM Algorithm');
 
 
 
-
+%%TODO:
+%Clipping predicted values over 5 to 5 and under 1 to 1
+%Convergence criterion based on PDF rather than change in RMSE
 
 
 

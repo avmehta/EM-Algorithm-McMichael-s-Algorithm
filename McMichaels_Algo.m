@@ -50,6 +50,26 @@ id_mat=eye(rtings); %Full identity matrix
 %in Robert's paper. The simplest way is to select R to be the identity
 %matrix. 
 R=id_mat;  
+%Initialization of R using method j-4
+%Equation 11:
+%This is the value described in equation 11 that relates to initialization
+%of R for j=2,3,and 4
+S=0;  
+N=zeros(rtings,rtings);
+for usrIdx = 1:size(Z,2)
+    usr=Z(:,usrIdx);
+    %Subset of identity matrix corresponding to Y(sub t)
+    H_yt=getHyt(usr,id_mat);
+    %Observed ratings of user
+    yt=H_yt*(usr);
+    lN=H_yt'*H_yt;
+    s=H_yt'*(yt-H_yt*mu)*(yt-H_yt*mu)'*H_yt;
+    S=S+s;
+    N=lN+N;
+end
+R=(N^-.5)*S*(N^-.5);
+
+
 iter=100; 
 lastIter=0; 
 %A vector of RMSEs from each iteration
@@ -120,7 +140,7 @@ for ii = 1:iter
         %Pre-product operator
         k_t=size(H_yt,1);
         pD_num=exp((-1*(yt-mu_yt)'*inv(R_yt)*(yt-mu_yt))/2);
-        pD_denom=((2*pi)^(k_t/2))*(abs(R_yt))^.5; %THIS IS NOT A CONSTANT****************
+        pD_denom=((2*pi)^(k_t/2))*(det(R_yt))^.5; %THIS IS NOT A CONSTANT****************
         pD=pD_num./pD_denom;
         pD_prod=pD_prod*pD;
     end
