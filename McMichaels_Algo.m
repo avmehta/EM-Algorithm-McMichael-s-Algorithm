@@ -1,6 +1,9 @@
-% The purpose of this script is to replicate the EM algorithm described in
-% Little and Rubin and tested in Application of a Gaussian, Missing-Data
+% The purpose of this script is to replicate McMichael's Gradient
+% Descent algorithm tested in Application of a Gaussian, Missing-Data
 % Model to Product Recommendation (Roberts)
+
+%For simplicity's sake, much of this code has been copied from the
+%associated file "EM_Algo.m"
 
 close all
 clear all
@@ -41,45 +44,18 @@ mu=(sum(Z')./sum(Z'~=0))';
 id_mat=eye(rtings); %Full identity matrix
 
 
-%%Here we can start the EM algorithm. 
+%%Here we can start McMichael's algorithm. 
 
 %Initializing R for the first user. FOUR ways to initialize R are described
 %in Robert's paper. The simplest way is to select R to be the identity
 %matrix. 
-%R=id_mat;  
-
-%Initialization of R using method j-4
-%Equation 11:
-%This is the value described in equation 11 that relates to initialization
-%of R for j=2,3,and 4
-S=0;  
-N=zeros(rtings,rtings);
-for usrIdx = 1:size(Z,2)
-    usr=Z(:,usrIdx);
-    %Subset of identity matrix corresponding to Y(sub t)
-    H_yt=getHyt(usr,id_mat);
-    %Observed ratings of user
-    yt=H_yt*(usr);
-    lN=H_yt'*H_yt;
-    s=H_yt'*(yt-H_yt*mu)*(yt-H_yt*mu)'*H_yt;
-    S=S+s;
-    N=lN+N;
-end
-R=(N^-.5)*S*(N^-.5);
-    
-
-
-
-
-%Number of iterations to perform EM algorithm. Note that in practice, the
-%algorithm will continue iterations until some convergence condition is
-%met. 
-iter=100; %27 is the number of iters EM took to converge in Robert's paper
+R=id_mat;  
+iter=100; 
 lastIter=0; 
 %A vector of RMSEs from each iteration
 RMSEs=zeros(1,1);
 %Initialize RMSE value (for convergence criterion).
-Last_RMSE=5;
+last_pD=1;
 %We will loop every iteration, updating mu, then subsequently updating R.
 for ii = 1:iter
     %Updating mu 
@@ -104,10 +80,10 @@ for ii = 1:iter
 
     
     %Updating R and calculating error
-    sumTerm3=zeros(rtings,rtings); %0 the summation terms. 
-    sumTerm4=zeros(rtings,rtings);
+    sum_d_terms=zeros(rtings,rtings); %0 the summation terms. 
     totalLen=0;
     sum_t_terms=0;
+    pD_prod=1;
     for usrIdx=1:size(Z,2)
         usr=Z(:,usrIdx);
         usrT=P(:,usrIdx); %Targets of user
@@ -126,12 +102,11 @@ for ii = 1:iter
         mu_yt=H_yt*mu_hat;
         %Equation 6:
         X_hat_t=(R_xtyt*(inv(R_yt))*(yt-mu_yt))+(mu_xt); %Predicted values
-        %Equation 8: (Actually computing updated covariance matrix)
+        %Calculating Z_hat_t to get RMSE
         Z_hat_t=(H_yt'*yt)+(H_xt'*X_hat_t);
-        term1=(Z_hat_t-mu)*((Z_hat_t-mu)');
-        term2=H_xt'*(R_xt-(R_xtyt*(inv(R_yt))*((R_xtyt)')))*H_xt;
-        sumTerm3=term1+sumTerm3;
-        sumTerm4=term2+sumTerm4;
+        %Equation 10 derivative/summation term:
+        d_term=(H_yt')*(inv(R_yt)-(inv(R_yt)*(yt-mu_yt)*(yt-mu_yt)'*inv(R_yt)))*H_yt;
+        sum_d_terms=sum_d_terms+d_term;
         %%Gather RMSE/MMSE
         %Below replicates what is described in Section 3 subsection B Eq 12
         H_ytT=getHyt(usrT,id_mat); %Observed TARGET values*
@@ -141,29 +116,36 @@ for ii = 1:iter
         t_terms=yt_T-specP; %Top terms (Equation 12)
         totalLen=lt+totalLen;
         sum_t_terms=sum_t_terms+((t_terms)'*(t_terms));
+        %Probability density function of Y^n as described by equation 1:
+        %Pre-product operator
+        k_t=size(H_yt,1);
+        pD_num=exp((-1*(yt-mu_yt)'*inv(R_yt)*(yt-mu_yt))/2);
+        pD_denom=((2*pi)^(k_t/2))*(abs(R_yt))^.5; %THIS IS NOT A CONSTANT****************
+        pD=pD_num./pD_denom;
+        pD_prod=pD_prod*pD;
     end
     %Calculating this iteration's error
     errSq=sum_t_terms./totalLen;
     RMSE=sqrt(errSq)
-    %Calculating next iteration's covariance
-    R=(sumTerm3+sumTerm4)./(size(Z,2)); %Where size(Z,2) is n
+    %Calculating delta prob density function for convergence criterion
+    
+    %Calculating next iteration's covariance (Equation 9)
+    gamma=.00001; %Gamma was selected to be 1*10^-5 in Robert's paper
+    R=R+(gamma*R)*(-.5.*sum_d_terms)*R;
     
     %Check if convergence criterion was met. If it was, stop iterating.
-    %Note that this convergence criterion is not exactly as described in
-    %equation 13, however it is similar and accomplishes the same purpose.
     RMSEs=vertcat(RMSEs,RMSE);
-    if Last_RMSE-RMSE<=.0005 %Convergence condition
+    if ((1/users)*log(pD_prod))-((1/users)*log(last_pD))<=.0005 %Convergence condition
         MMSE=RMSE; %Lowest RMSE
         break; 
     end
-    Last_RMSE=RMSE;
+    last_pD=pD_prod
 end
 RMSEs(1,:)=[]; %Clear zero row;
 plot(RMSEs);
 ylabel('RMSE');
 xlabel('Iteration');
-title('RMSE vs Iteration of EM Algorithm');
-
+title('RMSE vs Iteration of McMichaels Algorithm');
 
 
 
