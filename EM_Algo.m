@@ -70,7 +70,7 @@ R=(N^-.5)*S*(N^-.5);
 
 
 
-
+Z_hat=zeros(size(Z)); %Matrix to store all predicted and observed values. 
 %Number of iterations to perform EM algorithm. Note that in practice, the
 %algorithm will continue iterations until some convergence condition is
 %met. 
@@ -110,7 +110,7 @@ for ii = 1:iter
     sum_t_terms=0;
     for usrIdx=1:size(Z,2)
         usr=Z(:,usrIdx);
-        usrT=P(:,usrIdx); %Targets of user
+        usrT=P(:,usrIdx); %Targets of user - TODO: for Aircraft data, come up with an ideal set P. 
         H_yt=getHyt(usr,id_mat);
         %H_xt is a subset of the identity matrix corresponding to only
         %unobserved values. 
@@ -128,6 +128,9 @@ for ii = 1:iter
         X_hat_t=(R_xtyt*(inv(R_yt))*(yt-mu_yt))+(mu_xt); %Predicted values
         %Equation 8: (Actually computing updated covariance matrix)
         Z_hat_t=(H_yt'*yt)+(H_xt'*X_hat_t);
+        
+        Z_hat(:,usrIdx)=Z_hat_t; % **********NEW************* Adding to form a complete hypothesized data set (in aircraft application, for training on a more complete set). May choose to filter by confidence as to which FATS are included
+        
         term1=(Z_hat_t-mu)*((Z_hat_t-mu)');
         term2=H_xt'*(R_xt-(R_xtyt*(inv(R_yt))*((R_xtyt)')))*H_xt;
         sumTerm3=term1+sumTerm3;
